@@ -16,114 +16,138 @@ x-google-backend:
 
 paths:
   /api/auth/**:
-    x-google-backend:
-      address: https://${gke_endpoint}/api/auth
     get:
+      x-google-backend:
+        address: https://${gke_endpoint}/api/auth
       operationId: authGet
       responses:
         200:
           description: OK
     post:
+      x-google-backend:
+        address: https://${gke_endpoint}/api/auth
       operationId: authPost
       responses:
         200:
           description: OK
 
   /api/users/**:
-    x-google-backend:
-      address: https://${gke_endpoint}/api/users
     get:
+      x-google-backend:
+        address: https://${gke_endpoint}/api/users
       operationId: usersGet
       responses:
         200:
           description: OK
     post:
+      x-google-backend:
+        address: https://${gke_endpoint}/api/users
       operationId: usersPost
       responses:
         200:
           description: OK
     put:
+      x-google-backend:
+        address: https://${gke_endpoint}/api/users
       operationId: usersPut
       responses:
         200:
           description: OK
     delete:
+      x-google-backend:
+        address: https://${gke_endpoint}/api/users
       operationId: usersDelete
       responses:
         200:
           description: OK
 
   /api/posts/**:
-    x-google-backend:
-      address: https://${gke_endpoint}/api/posts
     get:
+      x-google-backend:
+        address: https://${gke_endpoint}/api/posts
       operationId: postsGet
       responses:
         200:
           description: OK
     post:
+      x-google-backend:
+        address: https://${gke_endpoint}/api/posts
       operationId: postsPost
       responses:
         200:
           description: OK
     put:
+      x-google-backend:
+        address: https://${gke_endpoint}/api/posts
       operationId: postsPut
       responses:
         200:
           description: OK
     delete:
+      x-google-backend:
+        address: https://${gke_endpoint}/api/posts
       operationId: postsDelete
       responses:
         200:
           description: OK
 
   /api/feed/**:
-    x-google-backend:
-      address: https://${gke_endpoint}/api/feed
     get:
+      x-google-backend:
+        address: https://${gke_endpoint}/api/feed
       operationId: feedGet
       responses:
         200:
           description: OK
 
   /api/comments/**:
-    x-google-backend:
-      address: https://${gke_endpoint}/api/comments
     get:
+      x-google-backend:
+        address: https://${gke_endpoint}/api/comments
       operationId: commentsGet
       responses:
         200:
           description: OK
     post:
+      x-google-backend:
+        address: https://${gke_endpoint}/api/comments
       operationId: commentsPost
       responses:
         200:
           description: OK
     put:
+      x-google-backend:
+        address: https://${gke_endpoint}/api/comments
       operationId: commentsPut
       responses:
         200:
           description: OK
     delete:
+      x-google-backend:
+        address: https://${gke_endpoint}/api/comments
       operationId: commentsDelete
       responses:
         200:
           description: OK
 
   /api/likes/**:
-    x-google-backend:
-      address: https://${gke_endpoint}/api/likes
     get:
+      x-google-backend:
+        address: https://${gke_endpoint}/api/likes
       operationId: likesGet
       responses:
         200:
           description: OK
     post:
+      x-google-backend:
+        address: https://${gke_endpoint}/api/likes
       operationId: likesPost
       responses:
         200:
           description: OK
     delete:
+      x-google-backend:
+        address: https://${gke_endpoint}/api/likes
       operationId: likesDelete
       responses:
         200:
@@ -132,5 +156,5 @@ paths:
 securityDefinitions:
   api_key:
     type: apiKey
-    name: Authorization
+    name: x-api-key
     in: header

@@ -186,12 +186,12 @@ resource "google_container_cluster" "primary" {
     }
   }
 
-  # Maintenance window
+  # Maintenance window - daily window to meet 48h maintenance availability requirement
   maintenance_policy {
     recurring_window {
       start_time = "2024-01-01T03:00:00Z"
-      end_time   = "2024-01-01T07:00:00Z"
-      recurrence = "FREQ=WEEKLY;BYDAY=SA,SU"
+      end_time   = "2024-01-01T09:00:00Z"
+      recurrence = "FREQ=DAILY"
     }
   }
 
