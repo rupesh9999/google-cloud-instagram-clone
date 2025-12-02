@@ -1,0 +1,42 @@
+---
+# =============================================================================
+# ServiceMonitor - Like Service
+# Prometheus scraping configuration for like management service
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: like-service-monitor
+  namespace: monitoring
+  labels:
+    app: like-service
+    team: instagram-clone
+    release: instagram-monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - instagram-clone
+  selector:
+    matchLabels:
+      app: like-service
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+      scrapeTimeout: 10s
+      scheme: http
+      honorLabels: true
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: 'jvm_.*|http_.*|spring_.*|hikaricp_.*|process_.*|system_.*'
+          action: keep
+        - sourceLabels: [__name__]
+          targetLabel: service
+          replacement: like-service
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: node

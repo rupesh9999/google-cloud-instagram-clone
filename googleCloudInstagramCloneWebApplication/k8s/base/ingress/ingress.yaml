@@ -1,0 +1,104 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: instagram-ingress
+  namespace: instagram-clone
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "instagram-static-ip"
+    networking.gke.io/managed-certificates: "instagram-managed-cert"
+    kubernetes.io/ingress.allow-http: "false"
+spec:
+  defaultBackend:
+    service:
+      name: frontend
+      port:
+        number: 80
+  rules:
+    - host: instagram.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+          - path: /api/auth
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: 8080
+          - path: /api/users
+            pathType: Prefix
+            backend:
+              service:
+                name: user-service
+                port:
+                  number: 8080
+          - path: /api/posts
+            pathType: Prefix
+            backend:
+              service:
+                name: post-service
+                port:
+                  number: 8080
+          - path: /api/feed
+            pathType: Prefix
+            backend:
+              service:
+                name: feed-service
+                port:
+                  number: 8080
+          - path: /api/comments
+            pathType: Prefix
+            backend:
+              service:
+                name: comment-service
+                port:
+                  number: 8080
+          - path: /api/likes
+            pathType: Prefix
+            backend:
+              service:
+                name: like-service
+                port:
+                  number: 8080
+---
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: instagram-managed-cert
+  namespace: instagram-clone
+spec:
+  domains:
+    - instagram.example.com
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: instagram-backend-config
+  namespace: instagram-clone
+spec:
+  healthCheck:
+    checkIntervalSec: 30
+    timeoutSec: 10
+    healthyThreshold: 1
+    unhealthyThreshold: 3
+    type: HTTP
+    requestPath: /actuator/health
+    port: 8080
+  sessionAffinity:
+    affinityType: "GENERATED_COOKIE"
+    affinityCookieTtlSec: 3600
+  securityPolicy:
+    name: "instagram-security-policy"
+  cdn:
+    enabled: true
+    cachePolicy:
+      includeHost: true
+      includeProtocol: true
+      includeQueryString: false

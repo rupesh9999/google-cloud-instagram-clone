@@ -1,0 +1,82 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: instagram-clone
+
+resources:
+  - ../../base
+
+namePrefix: dev-
+
+commonLabels:
+  environment: development
+
+# Development-specific patches
+patches:
+  # Reduce replicas for dev environment
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+    target:
+      kind: Deployment
+
+  # Reduce HPA min/max replicas for dev
+  - patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 3
+    target:
+      kind: HorizontalPodAutoscaler
+
+  # Reduce resource requests/limits for dev
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "256Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "100m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "512Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "250m"
+    target:
+      kind: Deployment
+      labelSelector: "app.kubernetes.io/component=backend"
+
+configMapGenerator:
+  - name: dev-config
+    behavior: merge
+    literals:
+      - SPRING_PROFILES_ACTIVE=dev
+      - LOG_LEVEL=DEBUG
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+
+images:
+  - name: gcr.io/instagram-clone-project/auth-service
+    newName: gcr.io/instagram-clone-dev/auth-service
+    newTag: dev
+  - name: gcr.io/instagram-clone-project/user-service
+    newName: gcr.io/instagram-clone-dev/user-service
+    newTag: dev
+  - name: gcr.io/instagram-clone-project/post-service
+    newName: gcr.io/instagram-clone-dev/post-service
+    newTag: dev
+  - name: gcr.io/instagram-clone-project/feed-service
+    newName: gcr.io/instagram-clone-dev/feed-service
+    newTag: dev
+  - name: gcr.io/instagram-clone-project/comment-service
+    newName: gcr.io/instagram-clone-dev/comment-service
+    newTag: dev
+  - name: gcr.io/instagram-clone-project/like-service
+    newName: gcr.io/instagram-clone-dev/like-service
+    newTag: dev
+  - name: gcr.io/instagram-clone-project/frontend
+    newName: gcr.io/instagram-clone-dev/frontend
+    newTag: dev

@@ -1,0 +1,110 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: instagram-clone
+
+resources:
+  - ../../base
+
+namePrefix: prod-
+
+commonLabels:
+  environment: production
+
+# Production-specific patches
+patches:
+  # Production replicas
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+    target:
+      kind: Deployment
+
+  # Production HPA settings
+  - patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 3
+      - op: replace
+        path: /spec/maxReplicas
+        value: 20
+    target:
+      kind: HorizontalPodAutoscaler
+      name: feed-service-hpa
+
+  - patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 3
+      - op: replace
+        path: /spec/maxReplicas
+        value: 20
+    target:
+      kind: HorizontalPodAutoscaler
+      name: frontend-hpa
+
+  # Enhanced resource limits for production
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "1Gi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "500m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "2Gi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "1000m"
+    target:
+      kind: Deployment
+      labelSelector: "app.kubernetes.io/component=backend"
+
+  # Pod Disruption Budgets for production
+  - patch: |-
+      apiVersion: policy/v1
+      kind: PodDisruptionBudget
+      metadata:
+        name: backend-pdb
+        namespace: instagram-clone
+      spec:
+        minAvailable: 2
+        selector:
+          matchLabels:
+            app.kubernetes.io/component: backend
+    target:
+      kind: Deployment
+      labelSelector: "app.kubernetes.io/component=backend"
+
+configMapGenerator:
+  - name: prod-config
+    behavior: merge
+    literals:
+      - SPRING_PROFILES_ACTIVE=prod
+      - LOG_LEVEL=WARN
+      - CORS_ALLOWED_ORIGINS=https://instagram.example.com
+
+images:
+  - name: gcr.io/instagram-clone-project/auth-service
+    newName: gcr.io/instagram-clone-prod/auth-service
+    newTag: v1.0.0
+  - name: gcr.io/instagram-clone-project/user-service
+    newName: gcr.io/instagram-clone-prod/user-service
+    newTag: v1.0.0
+  - name: gcr.io/instagram-clone-project/post-service
+    newName: gcr.io/instagram-clone-prod/post-service
+    newTag: v1.0.0
+  - name: gcr.io/instagram-clone-project/feed-service
+    newName: gcr.io/instagram-clone-prod/feed-service
+    newTag: v1.0.0
+  - name: gcr.io/instagram-clone-project/comment-service
+    newName: gcr.io/instagram-clone-prod/comment-service
+    newTag: v1.0.0
+  - name: gcr.io/instagram-clone-project/like-service
+    newName: gcr.io/instagram-clone-prod/like-service
+    newTag: v1.0.0
+  - name: gcr.io/instagram-clone-project/frontend
+    newName: gcr.io/instagram-clone-prod/frontend
+    newTag: v1.0.0

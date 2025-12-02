@@ -1,0 +1,191 @@
+---
+# =============================================================================
+# PrometheusRule - Infrastructure Alerts
+# Alerting rules for infrastructure components (GKE, nodes, storage)
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: instagram-clone-infra-alerts
+  namespace: monitoring
+  labels:
+    team: instagram-clone
+    release: instagram-monitoring
+    prometheus: kube-prometheus
+spec:
+  groups:
+    # ==========================================================================
+    # Kubernetes Cluster Alerts
+    # ==========================================================================
+    - name: instagram-clone.kubernetes
+      interval: 30s
+      rules:
+        - alert: KubernetesNodeNotReady
+          expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+          for: 10m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "Kubernetes node {{ $labels.node }} is not ready"
+            description: "Node {{ $labels.node }} has been in NotReady state for more than 10 minutes."
+
+        - alert: KubernetesNodeMemoryPressure
+          expr: kube_node_status_condition{condition="MemoryPressure",status="true"} == 1
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Node {{ $labels.node }} has memory pressure"
+            description: "Node {{ $labels.node }} is experiencing memory pressure."
+
+        - alert: KubernetesNodeDiskPressure
+          expr: kube_node_status_condition{condition="DiskPressure",status="true"} == 1
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Node {{ $labels.node }} has disk pressure"
+            description: "Node {{ $labels.node }} is experiencing disk pressure."
+
+        - alert: KubernetesDeploymentReplicasMismatch
+          expr: |
+            kube_deployment_spec_replicas{namespace="instagram-clone"} 
+            != kube_deployment_status_replicas_available{namespace="instagram-clone"}
+          for: 10m
+          labels:
+            severity: warning
+            team: instagram-clone
+          annotations:
+            summary: "Deployment {{ $labels.deployment }} has mismatched replicas"
+            description: "Deployment {{ $labels.deployment }} has {{ $value }} available replicas instead of expected."
+
+        - alert: KubernetesHPAScalingIssue
+          expr: |
+            kube_horizontalpodautoscaler_status_current_replicas{namespace="instagram-clone"}
+            == kube_horizontalpodautoscaler_spec_max_replicas{namespace="instagram-clone"}
+          for: 15m
+          labels:
+            severity: warning
+            team: instagram-clone
+          annotations:
+            summary: "HPA {{ $labels.horizontalpodautoscaler }} at max replicas"
+            description: "HPA {{ $labels.horizontalpodautoscaler }} has been at maximum replicas for 15 minutes. Consider increasing max replicas."
+
+    # ==========================================================================
+    # Node Resource Alerts
+    # ==========================================================================
+    - name: instagram-clone.nodes
+      interval: 30s
+      rules:
+        - alert: NodeHighCPU
+          expr: |
+            100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+          for: 10m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Node {{ $labels.instance }} has high CPU usage"
+            description: "Node {{ $labels.instance }} CPU usage is {{ $value | printf \"%.0f\" }}%."
+
+        - alert: NodeHighMemory
+          expr: |
+            (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+          for: 10m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Node {{ $labels.instance }} has high memory usage"
+            description: "Node {{ $labels.instance }} memory usage is {{ $value | printf \"%.0f\" }}%."
+
+        - alert: NodeFilesystemNearFull
+          expr: |
+            (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) * 100 < 15
+          for: 10m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Filesystem on {{ $labels.instance }} is nearly full"
+            description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} has only {{ $value | printf \"%.0f\" }}% available."
+
+        - alert: NodeFilesystemCritical
+          expr: |
+            (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) * 100 < 5
+          for: 5m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "Filesystem on {{ $labels.instance }} is critically full"
+            description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} has only {{ $value | printf \"%.0f\" }}% available."
+
+        - alert: NodeNetworkErrors
+          expr: |
+            increase(node_network_receive_errs_total[5m]) > 100 or increase(node_network_transmit_errs_total[5m]) > 100
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Network errors on {{ $labels.instance }}"
+            description: "Node {{ $labels.instance }} is experiencing network errors on interface {{ $labels.device }}."
+
+    # ==========================================================================
+    # Persistent Volume Alerts
+    # ==========================================================================
+    - name: instagram-clone.storage
+      interval: 60s
+      rules:
+        - alert: PersistentVolumeClaimPending
+          expr: kube_persistentvolumeclaim_status_phase{phase="Pending", namespace="instagram-clone"} == 1
+          for: 10m
+          labels:
+            severity: warning
+            team: instagram-clone
+          annotations:
+            summary: "PVC {{ $labels.persistentvolumeclaim }} is pending"
+            description: "PVC {{ $labels.persistentvolumeclaim }} in namespace {{ $labels.namespace }} has been pending for more than 10 minutes."
+
+        - alert: PersistentVolumeFailed
+          expr: kube_persistentvolume_status_phase{phase="Failed"} == 1
+          for: 5m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "PersistentVolume {{ $labels.persistentvolume }} failed"
+            description: "PersistentVolume {{ $labels.persistentvolume }} is in Failed state."
+
+    # ==========================================================================
+    # Ingress/Network Alerts
+    # ==========================================================================
+    - name: instagram-clone.network
+      interval: 30s
+      rules:
+        - alert: IngressHighLatency
+          expr: |
+            histogram_quantile(0.95, sum(rate(nginx_ingress_controller_request_duration_seconds_bucket{namespace="instagram-clone"}[5m])) by (le, ingress)) > 2
+          for: 10m
+          labels:
+            severity: warning
+            team: instagram-clone
+          annotations:
+            summary: "High ingress latency for {{ $labels.ingress }}"
+            description: "Ingress {{ $labels.ingress }} P95 latency is {{ $value | printf \"%.2f\" }}s."
+
+        - alert: IngressHighErrorRate
+          expr: |
+            sum(rate(nginx_ingress_controller_requests{namespace="instagram-clone", status=~"5.."}[5m])) by (ingress)
+            / sum(rate(nginx_ingress_controller_requests{namespace="instagram-clone"}[5m])) by (ingress) * 100 > 5
+          for: 5m
+          labels:
+            severity: critical
+            team: instagram-clone
+          annotations:
+            summary: "High ingress error rate for {{ $labels.ingress }}"
+            description: "Ingress {{ $labels.ingress }} is experiencing {{ $value | printf \"%.2f\" }}% error rate."

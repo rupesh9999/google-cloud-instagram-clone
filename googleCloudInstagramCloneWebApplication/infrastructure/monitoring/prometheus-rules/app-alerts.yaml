@@ -1,0 +1,289 @@
+---
+# =============================================================================
+# PrometheusRule - Application Alerts
+# Custom alerting rules for Instagram Clone application services
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: instagram-clone-app-alerts
+  namespace: monitoring
+  labels:
+    team: instagram-clone
+    release: instagram-monitoring
+    prometheus: kube-prometheus
+spec:
+  groups:
+    # ==========================================================================
+    # Service Availability Alerts
+    # ==========================================================================
+    - name: instagram-clone.availability
+      interval: 30s
+      rules:
+        - alert: ServiceDown
+          expr: up{job=~".*-service.*"} == 0
+          for: 1m
+          labels:
+            severity: critical
+            team: instagram-clone
+          annotations:
+            summary: "Service {{ $labels.job }} is down"
+            description: "The service {{ $labels.job }} in namespace {{ $labels.namespace }} has been down for more than 1 minute."
+            runbook_url: "https://wiki.example.com/runbooks/service-down"
+
+        - alert: HighPodRestartRate
+          expr: increase(kube_pod_container_status_restarts_total{namespace="instagram-clone"}[1h]) > 5
+          for: 5m
+          labels:
+            severity: warning
+            team: instagram-clone
+          annotations:
+            summary: "High pod restart rate for {{ $labels.pod }}"
+            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has restarted {{ $value | printf \"%.0f\" }} times in the last hour."
+
+        - alert: PodCrashLooping
+          expr: increase(kube_pod_container_status_restarts_total{namespace="instagram-clone"}[15m]) > 3
+          for: 5m
+          labels:
+            severity: critical
+            team: instagram-clone
+          annotations:
+            summary: "Pod {{ $labels.pod }} is crash looping"
+            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has restarted {{ $value | printf \"%.0f\" }} times in the last 15 minutes."
+
+        - alert: PodNotReady
+          expr: kube_pod_status_ready{namespace="instagram-clone", condition="true"} == 0
+          for: 5m
+          labels:
+            severity: warning
+            team: instagram-clone
+          annotations:
+            summary: "Pod {{ $labels.pod }} is not ready"
+            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has not been ready for more than 5 minutes."
+
+    # ==========================================================================
+    # HTTP/API Alerts
+    # ==========================================================================
+    - name: instagram-clone.http
+      interval: 30s
+      rules:
+        - alert: HighErrorRate
+          expr: |
+            (
+              sum(rate(http_server_requests_seconds_count{namespace="instagram-clone", status=~"5.."}[5m])) by (service)
+              /
+              sum(rate(http_server_requests_seconds_count{namespace="instagram-clone"}[5m])) by (service)
+            ) * 100 > 5
+          for: 5m
+          labels:
+            severity: critical
+            team: instagram-clone
+          annotations:
+            summary: "High HTTP error rate for {{ $labels.service }}"
+            description: "Service {{ $labels.service }} is experiencing {{ $value | printf \"%.2f\" }}% error rate (>5%) in the last 5 minutes."
+
+        - alert: HighLatency
+          expr: |
+            histogram_quantile(0.95, 
+              sum(rate(http_server_requests_seconds_bucket{namespace="instagram-clone"}[5m])) by (service, le)
+            ) > 1
+          for: 5m
+          labels:
+            severity: warning
+            team: instagram-clone
+          annotations:
+            summary: "High latency for {{ $labels.service }}"
+            description: "Service {{ $labels.service }} P95 latency is {{ $value | printf \"%.2f\" }}s (>1s) in the last 5 minutes."
+
+        - alert: VeryHighLatency
+          expr: |
+            histogram_quantile(0.99, 
+              sum(rate(http_server_requests_seconds_bucket{namespace="instagram-clone"}[5m])) by (service, le)
+            ) > 3
+          for: 5m
+          labels:
+            severity: critical
+            team: instagram-clone
+          annotations:
+            summary: "Very high latency for {{ $labels.service }}"
+            description: "Service {{ $labels.service }} P99 latency is {{ $value | printf \"%.2f\" }}s (>3s) in the last 5 minutes."
+
+        - alert: LowRequestRate
+          expr: |
+            sum(rate(http_server_requests_seconds_count{namespace="instagram-clone"}[5m])) by (service) < 0.1
+          for: 10m
+          labels:
+            severity: info
+            team: instagram-clone
+          annotations:
+            summary: "Low request rate for {{ $labels.service }}"
+            description: "Service {{ $labels.service }} is receiving very few requests ({{ $value | printf \"%.2f\" }} req/s)."
+
+    # ==========================================================================
+    # Database/Connection Pool Alerts
+    # ==========================================================================
+    - name: instagram-clone.database
+      interval: 30s
+      rules:
+        - alert: DatabasePoolExhausted
+          expr: |
+            (hikaricp_connections_active{namespace="instagram-clone"} / hikaricp_connections_max{namespace="instagram-clone"}) * 100 > 90
+          for: 5m
+          labels:
+            severity: critical
+            team: instagram-clone
+          annotations:
+            summary: "Database pool near exhaustion for {{ $labels.service }}"
+            description: "HikariCP connection pool for {{ $labels.service }} is {{ $value | printf \"%.0f\" }}% utilized."
+
+        - alert: DatabasePoolHighUsage
+          expr: |
+            (hikaricp_connections_active{namespace="instagram-clone"} / hikaricp_connections_max{namespace="instagram-clone"}) * 100 > 70
+          for: 10m
+          labels:
+            severity: warning
+            team: instagram-clone
+          annotations:
+            summary: "Database pool high usage for {{ $labels.service }}"
+            description: "HikariCP connection pool for {{ $labels.service }} is {{ $value | printf \"%.0f\" }}% utilized."
+
+        - alert: DatabaseConnectionTimeouts
+          expr: |
+            increase(hikaricp_connections_timeout_total{namespace="instagram-clone"}[5m]) > 5
+          for: 5m
+          labels:
+            severity: warning
+            team: instagram-clone
+          annotations:
+            summary: "Database connection timeouts for {{ $labels.service }}"
+            description: "{{ $labels.service }} experienced {{ $value | printf \"%.0f\" }} connection timeouts in the last 5 minutes."
+
+    # ==========================================================================
+    # JVM Alerts
+    # ==========================================================================
+    - name: instagram-clone.jvm
+      interval: 30s
+      rules:
+        - alert: JVMHeapHighUsage
+          expr: |
+            (jvm_memory_used_bytes{namespace="instagram-clone", area="heap"} / jvm_memory_max_bytes{namespace="instagram-clone", area="heap"}) * 100 > 85
+          for: 5m
+          labels:
+            severity: warning
+            team: instagram-clone
+          annotations:
+            summary: "High JVM heap usage for {{ $labels.service }}"
+            description: "JVM heap usage for {{ $labels.service }} is {{ $value | printf \"%.0f\" }}% (>85%)."
+
+        - alert: JVMHeapCritical
+          expr: |
+            (jvm_memory_used_bytes{namespace="instagram-clone", area="heap"} / jvm_memory_max_bytes{namespace="instagram-clone", area="heap"}) * 100 > 95
+          for: 2m
+          labels:
+            severity: critical
+            team: instagram-clone
+          annotations:
+            summary: "Critical JVM heap usage for {{ $labels.service }}"
+            description: "JVM heap usage for {{ $labels.service }} is {{ $value | printf \"%.0f\" }}% (>95%). OOM risk!"
+
+        - alert: HighGCPause
+          expr: |
+            rate(jvm_gc_pause_seconds_sum{namespace="instagram-clone"}[5m]) 
+            / rate(jvm_gc_pause_seconds_count{namespace="instagram-clone"}[5m]) > 0.5
+          for: 5m
+          labels:
+            severity: warning
+            team: instagram-clone
+          annotations:
+            summary: "High GC pause time for {{ $labels.service }}"
+            description: "Average GC pause time for {{ $labels.service }} is {{ $value | printf \"%.2f\" }}s."
+
+        - alert: HighThreadCount
+          expr: |
+            jvm_threads_live_threads{namespace="instagram-clone"} > 300
+          for: 5m
+          labels:
+            severity: warning
+            team: instagram-clone
+          annotations:
+            summary: "High thread count for {{ $labels.service }}"
+            description: "Thread count for {{ $labels.service }} is {{ $value | printf \"%.0f\" }} (>300)."
+
+    # ==========================================================================
+    # Resource Alerts
+    # ==========================================================================
+    - name: instagram-clone.resources
+      interval: 30s
+      rules:
+        - alert: HighCPUUsage
+          expr: |
+            (
+              sum(rate(container_cpu_usage_seconds_total{namespace="instagram-clone", container!=""}[5m])) by (pod)
+              /
+              sum(kube_pod_container_resource_limits{namespace="instagram-clone", resource="cpu"}) by (pod)
+            ) * 100 > 80
+          for: 10m
+          labels:
+            severity: warning
+            team: instagram-clone
+          annotations:
+            summary: "High CPU usage for pod {{ $labels.pod }}"
+            description: "Pod {{ $labels.pod }} is using {{ $value | printf \"%.0f\" }}% of its CPU limit."
+
+        - alert: HighMemoryUsage
+          expr: |
+            (
+              sum(container_memory_working_set_bytes{namespace="instagram-clone", container!=""}) by (pod)
+              /
+              sum(kube_pod_container_resource_limits{namespace="instagram-clone", resource="memory"}) by (pod)
+            ) * 100 > 80
+          for: 10m
+          labels:
+            severity: warning
+            team: instagram-clone
+          annotations:
+            summary: "High memory usage for pod {{ $labels.pod }}"
+            description: "Pod {{ $labels.pod }} is using {{ $value | printf \"%.0f\" }}% of its memory limit."
+
+        - alert: PVCNearFull
+          expr: |
+            (kubelet_volume_stats_used_bytes{namespace="instagram-clone"} / kubelet_volume_stats_capacity_bytes{namespace="instagram-clone"}) * 100 > 80
+          for: 5m
+          labels:
+            severity: warning
+            team: instagram-clone
+          annotations:
+            summary: "PVC {{ $labels.persistentvolumeclaim }} is near full"
+            description: "PVC {{ $labels.persistentvolumeclaim }} is {{ $value | printf \"%.0f\" }}% full."
+
+    # ==========================================================================
+    # Redis/Cache Alerts
+    # ==========================================================================
+    - name: instagram-clone.cache
+      interval: 30s
+      rules:
+        - alert: RedisCacheMissHigh
+          expr: |
+            (
+              increase(spring_data_redis_cache_misses_total{namespace="instagram-clone"}[5m])
+              /
+              (increase(spring_data_redis_cache_hits_total{namespace="instagram-clone"}[5m]) + increase(spring_data_redis_cache_misses_total{namespace="instagram-clone"}[5m]))
+            ) * 100 > 50
+          for: 10m
+          labels:
+            severity: warning
+            team: instagram-clone
+          annotations:
+            summary: "High cache miss rate for {{ $labels.service }}"
+            description: "Cache miss rate for {{ $labels.service }} is {{ $value | printf \"%.0f\" }}%."
+
+        - alert: RedisConnectionErrors
+          expr: |
+            increase(lettuce_command_completion_total{namespace="instagram-clone", status="ERR"}[5m]) > 10
+          for: 5m
+          labels:
+            severity: warning
+            team: instagram-clone
+          annotations:
+            summary: "Redis connection errors for {{ $labels.service }}"
+            description: "{{ $labels.service }} experienced {{ $value | printf \"%.0f\" }} Redis errors in the last 5 minutes."

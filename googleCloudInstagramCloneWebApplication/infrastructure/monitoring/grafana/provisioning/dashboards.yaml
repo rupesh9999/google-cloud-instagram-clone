@@ -1,0 +1,46 @@
+# =============================================================================
+# Grafana Dashboard Provisioning Configuration
+# Instagram Clone - Monitoring Stack
+# =============================================================================
+apiVersion: 1
+
+# Providers configure where to load dashboards from
+providers:
+  # Instagram Clone application dashboards
+  - name: 'instagram-clone'
+    orgId: 1
+    folder: 'Instagram Clone'
+    folderUid: 'instagram-clone-folder'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 60
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/instagram-clone
+      foldersFromFilesStructure: false
+
+  # Kubernetes infrastructure dashboards
+  - name: 'kubernetes'
+    orgId: 1
+    folder: 'Kubernetes'
+    folderUid: 'kubernetes-folder'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 60
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/kubernetes
+      foldersFromFilesStructure: false
+
+  # Default dashboards loaded from ConfigMaps
+  - name: 'default'
+    orgId: 1
+    folder: 'General'
+    folderUid: 'general-folder'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/default
+      foldersFromFilesStructure: false

@@ -1,0 +1,125 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: instagram-clone
+  labels:
+    app: auth-service
+    app.kubernetes.io/name: auth-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: auth-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: instagram-clone
+  labels:
+    app: user-service
+    app.kubernetes.io/name: user-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: user-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: post-service
+  namespace: instagram-clone
+  labels:
+    app: post-service
+    app.kubernetes.io/name: post-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: post-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: feed-service
+  namespace: instagram-clone
+  labels:
+    app: feed-service
+    app.kubernetes.io/name: feed-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: feed-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: comment-service
+  namespace: instagram-clone
+  labels:
+    app: comment-service
+    app.kubernetes.io/name: comment-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: comment-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: like-service
+  namespace: instagram-clone
+  labels:
+    app: like-service
+    app.kubernetes.io/name: like-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: like-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: instagram-clone
+  labels:
+    app: frontend
+    app.kubernetes.io/name: frontend
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: frontend

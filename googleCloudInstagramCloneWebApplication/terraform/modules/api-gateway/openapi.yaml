@@ -1,0 +1,136 @@
+swagger: "2.0"
+info:
+  title: Instagram Clone API
+  version: 1.0.0
+  description: API Gateway for Instagram Clone microservices
+schemes:
+  - https
+produces:
+  - application/json
+consumes:
+  - application/json
+
+x-google-backend:
+  address: https://${gke_endpoint}
+  protocol: h2
+
+paths:
+  /api/auth/**:
+    x-google-backend:
+      address: https://${gke_endpoint}/api/auth
+    get:
+      operationId: authGet
+      responses:
+        200:
+          description: OK
+    post:
+      operationId: authPost
+      responses:
+        200:
+          description: OK
+
+  /api/users/**:
+    x-google-backend:
+      address: https://${gke_endpoint}/api/users
+    get:
+      operationId: usersGet
+      responses:
+        200:
+          description: OK
+    post:
+      operationId: usersPost
+      responses:
+        200:
+          description: OK
+    put:
+      operationId: usersPut
+      responses:
+        200:
+          description: OK
+    delete:
+      operationId: usersDelete
+      responses:
+        200:
+          description: OK
+
+  /api/posts/**:
+    x-google-backend:
+      address: https://${gke_endpoint}/api/posts
+    get:
+      operationId: postsGet
+      responses:
+        200:
+          description: OK
+    post:
+      operationId: postsPost
+      responses:
+        200:
+          description: OK
+    put:
+      operationId: postsPut
+      responses:
+        200:
+          description: OK
+    delete:
+      operationId: postsDelete
+      responses:
+        200:
+          description: OK
+
+  /api/feed/**:
+    x-google-backend:
+      address: https://${gke_endpoint}/api/feed
+    get:
+      operationId: feedGet
+      responses:
+        200:
+          description: OK
+
+  /api/comments/**:
+    x-google-backend:
+      address: https://${gke_endpoint}/api/comments
+    get:
+      operationId: commentsGet
+      responses:
+        200:
+          description: OK
+    post:
+      operationId: commentsPost
+      responses:
+        200:
+          description: OK
+    put:
+      operationId: commentsPut
+      responses:
+        200:
+          description: OK
+    delete:
+      operationId: commentsDelete
+      responses:
+        200:
+          description: OK
+
+  /api/likes/**:
+    x-google-backend:
+      address: https://${gke_endpoint}/api/likes
+    get:
+      operationId: likesGet
+      responses:
+        200:
+          description: OK
+    post:
+      operationId: likesPost
+      responses:
+        200:
+          description: OK
+    delete:
+      operationId: likesDelete
+      responses:
+        200:
+          description: OK
+
+securityDefinitions:
+  api_key:
+    type: apiKey
+    name: Authorization
+    in: header

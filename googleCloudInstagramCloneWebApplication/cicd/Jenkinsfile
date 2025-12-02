@@ -1,0 +1,401 @@
+pipeline {
+    agent {
+        kubernetes {
+            yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    jenkins: agent
+spec:
+  serviceAccountName: jenkins-agent
+  containers:
+  - name: maven
+    image: maven:3.9.6-eclipse-temurin-21
+    command:
+    - cat
+    tty: true
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "1"
+      limits:
+        memory: "4Gi"
+        cpu: "2"
+  - name: node
+    image: node:20-alpine
+    command:
+    - cat
+    tty: true
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1"
+  - name: docker
+    image: docker:24-dind
+    securityContext:
+      privileged: true
+    env:
+    - name: DOCKER_TLS_CERTDIR
+      value: ""
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1"
+  - name: gcloud
+    image: google/cloud-sdk:latest
+    command:
+    - cat
+    tty: true
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+  - name: kubectl
+    image: bitnami/kubectl:1.32
+    command:
+    - cat
+    tty: true
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "250m"
+"""
+        }
+    }
+
+    environment {
+        GCP_PROJECT_ID = credentials('gcp-project-id')
+        GCP_REGION = 'us-central1'
+        GCR_REGISTRY = "gcr.io/${GCP_PROJECT_ID}"
+        GKE_CLUSTER = 'instagram-clone-gke'
+        SONAR_HOST = credentials('sonar-host-url')
+        SONAR_TOKEN = credentials('sonar-token')
+    }
+
+    options {
+        timeout(time: 60, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timestamps()
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                script {
+                    env.GIT_COMMIT_SHORT = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
+                    env.BUILD_TAG = "${env.BRANCH_NAME}-${env.GIT_COMMIT_SHORT}-${env.BUILD_NUMBER}"
+                }
+            }
+        }
+
+        stage('Build & Test') {
+            parallel {
+                stage('Backend Services') {
+                    steps {
+                        container('maven') {
+                            dir('backend') {
+                                sh '''
+                                    mvn clean verify \
+                                        -DskipITs=false \
+                                        -Dmaven.test.failure.ignore=false \
+                                        -Dsonar.host.url=${SONAR_HOST} \
+                                        -Dsonar.login=${SONAR_TOKEN} \
+                                        sonar:sonar
+                                '''
+                            }
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'backend/**/target/surefire-reports/*.xml'
+                            jacoco(
+                                execPattern: 'backend/**/target/jacoco.exec',
+                                classPattern: 'backend/**/target/classes',
+                                sourcePattern: 'backend/**/src/main/java'
+                            )
+                        }
+                    }
+                }
+
+                stage('Frontend') {
+                    steps {
+                        container('node') {
+                            dir('frontend') {
+                                sh '''
+                                    npm ci
+                                    npm run lint
+                                    npm run test:coverage
+                                    npm run build
+                                '''
+                            }
+                        }
+                    }
+                    post {
+                        always {
+                            publishHTML(target: [
+                                reportDir: 'frontend/coverage',
+                                reportFiles: 'index.html',
+                                reportName: 'Frontend Coverage Report'
+                            ])
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Security Scan') {
+            parallel {
+                stage('SAST - SonarQube') {
+                    steps {
+                        container('maven') {
+                            sh '''
+                                mvn sonar:sonar \
+                                    -Dsonar.projectKey=instagram-clone \
+                                    -Dsonar.host.url=${SONAR_HOST} \
+                                    -Dsonar.login=${SONAR_TOKEN}
+                            '''
+                        }
+                    }
+                }
+
+                stage('Dependency Check') {
+                    steps {
+                        container('maven') {
+                            dir('backend') {
+                                sh 'mvn org.owasp:dependency-check-maven:check'
+                            }
+                        }
+                    }
+                    post {
+                        always {
+                            dependencyCheckPublisher pattern: 'backend/**/dependency-check-report.xml'
+                        }
+                    }
+                }
+
+                stage('Trivy Scan') {
+                    steps {
+                        container('docker') {
+                            sh '''
+                                apk add --no-cache curl
+                                curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+                                trivy fs --severity HIGH,CRITICAL --exit-code 1 .
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Build Docker Images') {
+            steps {
+                container('docker') {
+                    script {
+                        def services = ['auth-service', 'user-service', 'post-service', 'feed-service', 'comment-service', 'like-service']
+                        
+                        // Build backend services
+                        services.each { service ->
+                            sh """
+                                docker build \
+                                    -t ${GCR_REGISTRY}/${service}:${BUILD_TAG} \
+                                    -t ${GCR_REGISTRY}/${service}:latest \
+                                    -f backend/${service}/Dockerfile \
+                                    backend/${service}
+                            """
+                        }
+                        
+                        // Build frontend
+                        sh """
+                            docker build \
+                                -t ${GCR_REGISTRY}/frontend:${BUILD_TAG} \
+                                -t ${GCR_REGISTRY}/frontend:latest \
+                                frontend
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Scan Docker Images') {
+            steps {
+                container('docker') {
+                    script {
+                        def services = ['auth-service', 'user-service', 'post-service', 'feed-service', 'comment-service', 'like-service', 'frontend']
+                        
+                        services.each { service ->
+                            sh """
+                                trivy image \
+                                    --severity HIGH,CRITICAL \
+                                    --exit-code 1 \
+                                    ${GCR_REGISTRY}/${service}:${BUILD_TAG}
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Push Docker Images') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'develop'
+                    branch pattern: 'release/*', comparator: 'GLOB'
+                }
+            }
+            steps {
+                container('gcloud') {
+                    withCredentials([file(credentialsId: 'gcp-service-account-key', variable: 'GCP_KEY')]) {
+                        sh '''
+                            gcloud auth activate-service-account --key-file=${GCP_KEY}
+                            gcloud auth configure-docker gcr.io --quiet
+                        '''
+                        
+                        script {
+                            def services = ['auth-service', 'user-service', 'post-service', 'feed-service', 'comment-service', 'like-service', 'frontend']
+                            
+                            services.each { service ->
+                                sh """
+                                    docker push ${GCR_REGISTRY}/${service}:${BUILD_TAG}
+                                    docker push ${GCR_REGISTRY}/${service}:latest
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Dev') {
+            when {
+                branch 'develop'
+            }
+            steps {
+                container('kubectl') {
+                    withCredentials([file(credentialsId: 'gcp-service-account-key', variable: 'GCP_KEY')]) {
+                        sh '''
+                            gcloud auth activate-service-account --key-file=${GCP_KEY}
+                            gcloud container clusters get-credentials ${GKE_CLUSTER} --region ${GCP_REGION} --project ${GCP_PROJECT_ID}
+                            
+                            # Update image tags in kustomization
+                            cd k8s/overlays/dev
+                            kustomize edit set image \
+                                gcr.io/instagram-clone-dev/auth-service=${GCR_REGISTRY}/auth-service:${BUILD_TAG} \
+                                gcr.io/instagram-clone-dev/user-service=${GCR_REGISTRY}/user-service:${BUILD_TAG} \
+                                gcr.io/instagram-clone-dev/post-service=${GCR_REGISTRY}/post-service:${BUILD_TAG} \
+                                gcr.io/instagram-clone-dev/feed-service=${GCR_REGISTRY}/feed-service:${BUILD_TAG} \
+                                gcr.io/instagram-clone-dev/comment-service=${GCR_REGISTRY}/comment-service:${BUILD_TAG} \
+                                gcr.io/instagram-clone-dev/like-service=${GCR_REGISTRY}/like-service:${BUILD_TAG} \
+                                gcr.io/instagram-clone-dev/frontend=${GCR_REGISTRY}/frontend:${BUILD_TAG}
+                            
+                            kustomize build . | kubectl apply -f -
+                            
+                            # Wait for rollout
+                            kubectl rollout status deployment/dev-auth-service -n instagram-clone --timeout=300s
+                            kubectl rollout status deployment/dev-frontend -n instagram-clone --timeout=300s
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Staging') {
+            when {
+                branch pattern: 'release/*', comparator: 'GLOB'
+            }
+            steps {
+                container('kubectl') {
+                    withCredentials([file(credentialsId: 'gcp-service-account-key', variable: 'GCP_KEY')]) {
+                        sh '''
+                            gcloud auth activate-service-account --key-file=${GCP_KEY}
+                            gcloud container clusters get-credentials ${GKE_CLUSTER} --region ${GCP_REGION} --project ${GCP_PROJECT_ID}
+                            
+                            cd k8s/overlays/staging
+                            kustomize edit set image \
+                                gcr.io/instagram-clone-staging/auth-service=${GCR_REGISTRY}/auth-service:${BUILD_TAG} \
+                                gcr.io/instagram-clone-staging/user-service=${GCR_REGISTRY}/user-service:${BUILD_TAG} \
+                                gcr.io/instagram-clone-staging/post-service=${GCR_REGISTRY}/post-service:${BUILD_TAG} \
+                                gcr.io/instagram-clone-staging/feed-service=${GCR_REGISTRY}/feed-service:${BUILD_TAG} \
+                                gcr.io/instagram-clone-staging/comment-service=${GCR_REGISTRY}/comment-service:${BUILD_TAG} \
+                                gcr.io/instagram-clone-staging/like-service=${GCR_REGISTRY}/like-service:${BUILD_TAG} \
+                                gcr.io/instagram-clone-staging/frontend=${GCR_REGISTRY}/frontend:${BUILD_TAG}
+                            
+                            kustomize build . | kubectl apply -f -
+                            
+                            # Wait for rollout
+                            kubectl rollout status deployment/staging-auth-service -n instagram-clone --timeout=300s
+                            kubectl rollout status deployment/staging-frontend -n instagram-clone --timeout=300s
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Production') {
+            when {
+                branch 'main'
+            }
+            steps {
+                input message: 'Deploy to Production?', ok: 'Deploy'
+                
+                container('kubectl') {
+                    withCredentials([file(credentialsId: 'gcp-service-account-key', variable: 'GCP_KEY')]) {
+                        sh '''
+                            gcloud auth activate-service-account --key-file=${GCP_KEY}
+                            gcloud container clusters get-credentials ${GKE_CLUSTER} --region ${GCP_REGION} --project ${GCP_PROJECT_ID}
+                            
+                            cd k8s/overlays/prod
+                            kustomize edit set image \
+                                gcr.io/instagram-clone-prod/auth-service=${GCR_REGISTRY}/auth-service:${BUILD_TAG} \
+                                gcr.io/instagram-clone-prod/user-service=${GCR_REGISTRY}/user-service:${BUILD_TAG} \
+                                gcr.io/instagram-clone-prod/post-service=${GCR_REGISTRY}/post-service:${BUILD_TAG} \
+                                gcr.io/instagram-clone-prod/feed-service=${GCR_REGISTRY}/feed-service:${BUILD_TAG} \
+                                gcr.io/instagram-clone-prod/comment-service=${GCR_REGISTRY}/comment-service:${BUILD_TAG} \
+                                gcr.io/instagram-clone-prod/like-service=${GCR_REGISTRY}/like-service:${BUILD_TAG} \
+                                gcr.io/instagram-clone-prod/frontend=${GCR_REGISTRY}/frontend:${BUILD_TAG}
+                            
+                            kustomize build . | kubectl apply -f -
+                            
+                            # Wait for rollout with longer timeout for production
+                            kubectl rollout status deployment/prod-auth-service -n instagram-clone --timeout=600s
+                            kubectl rollout status deployment/prod-frontend -n instagram-clone --timeout=600s
+                        '''
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            slackSend(
+                color: 'good',
+                message: "Build Successful: ${env.JOB_NAME} #${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
+            )
+        }
+        failure {
+            slackSend(
+                color: 'danger',
+                message: "Build Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
+            )
+        }
+    }
+}

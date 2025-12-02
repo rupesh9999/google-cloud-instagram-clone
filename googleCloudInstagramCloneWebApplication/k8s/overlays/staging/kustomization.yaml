@@ -1,0 +1,64 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: instagram-clone
+
+resources:
+  - ../../base
+
+namePrefix: staging-
+
+commonLabels:
+  environment: staging
+
+# Staging-specific patches
+patches:
+  # Moderate replicas for staging environment
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+    target:
+      kind: Deployment
+
+  # Moderate HPA min/max replicas for staging
+  - patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 2
+      - op: replace
+        path: /spec/maxReplicas
+        value: 5
+    target:
+      kind: HorizontalPodAutoscaler
+
+configMapGenerator:
+  - name: staging-config
+    behavior: merge
+    literals:
+      - SPRING_PROFILES_ACTIVE=staging
+      - LOG_LEVEL=INFO
+      - CORS_ALLOWED_ORIGINS=https://staging.instagram.example.com
+
+images:
+  - name: gcr.io/instagram-clone-project/auth-service
+    newName: gcr.io/instagram-clone-staging/auth-service
+    newTag: staging
+  - name: gcr.io/instagram-clone-project/user-service
+    newName: gcr.io/instagram-clone-staging/user-service
+    newTag: staging
+  - name: gcr.io/instagram-clone-project/post-service
+    newName: gcr.io/instagram-clone-staging/post-service
+    newTag: staging
+  - name: gcr.io/instagram-clone-project/feed-service
+    newName: gcr.io/instagram-clone-staging/feed-service
+    newTag: staging
+  - name: gcr.io/instagram-clone-project/comment-service
+    newName: gcr.io/instagram-clone-staging/comment-service
+    newTag: staging
+  - name: gcr.io/instagram-clone-project/like-service
+    newName: gcr.io/instagram-clone-staging/like-service
+    newTag: staging
+  - name: gcr.io/instagram-clone-project/frontend
+    newName: gcr.io/instagram-clone-staging/frontend
+    newTag: staging
