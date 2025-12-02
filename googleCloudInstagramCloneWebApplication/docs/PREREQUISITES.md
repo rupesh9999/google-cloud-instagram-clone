@@ -35,13 +35,13 @@ This document outlines all the prerequisites needed to deploy the Instagram Clon
 
 ```bash
 # Create a new project
-gcloud projects create instagram-clone-project --name="Instagram Clone"
+gcloud projects create instagram-clone-project1 --name="Instagram Clone"
 
 # Set as default project
-gcloud config set project instagram-clone-project
+gcloud config set project instagram-clone-project1
 
 # Link billing account
-gcloud billing projects link instagram-clone-project --billing-account=YOUR_BILLING_ACCOUNT_ID
+gcloud billing projects link instagram-clone-project1 --billing-account=YOUR_BILLING_ACCOUNT_ID
 ```
 
 ### 2.2 Enable Required APIs
@@ -90,14 +90,14 @@ ROLES=(
 )
 
 for role in "${ROLES[@]}"; do
-  gcloud projects add-iam-policy-binding instagram-clone-project \
-    --member="serviceAccount:terraform-sa@instagram-clone-project.iam.gserviceaccount.com" \
+  gcloud projects add-iam-policy-binding instagram-clone-project1 \
+    --member="serviceAccount:terraform-sa@instagram-clone-project1.iam.gserviceaccount.com" \
     --role="$role"
 done
 
 # Create and download key
 gcloud iam service-accounts keys create terraform-key.json \
-  --iam-account=terraform-sa@instagram-clone-project.iam.gserviceaccount.com
+  --iam-account=terraform-sa@instagram-clone-project1.iam.gserviceaccount.com
 
 # Set environment variable
 export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/terraform-key.json"
@@ -241,7 +241,7 @@ After cluster creation:
 ```bash
 gcloud container clusters get-credentials instagram-clone-gke \
   --region us-central1 \
-  --project instagram-clone-project
+  --project instagram-clone-project1
 ```
 
 ## 8. CI/CD Requirements

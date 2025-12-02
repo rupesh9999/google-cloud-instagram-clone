@@ -62,19 +62,20 @@ resource "google_secret_manager_secret_version" "versions" {
 }
 
 # IAM bindings for secret access
+# Use static indices to avoid for_each issues with unknown values
 resource "google_secret_manager_secret_iam_member" "accessors" {
   for_each = {
-    for pair in setproduct(keys(var.secrets), var.accessor_service_accounts) :
+    for pair in setproduct(keys(var.secrets), range(length(var.accessor_service_accounts))) :
     "${pair[0]}-${pair[1]}" => {
-      secret  = pair[0]
-      account = pair[1]
+      secret        = pair[0]
+      account_index = pair[1]
     }
   }
 
   project   = var.project_id
   secret_id = google_secret_manager_secret.secrets[each.value.secret].secret_id
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${each.value.account}"
+  member    = "serviceAccount:${var.accessor_service_accounts[each.value.account_index]}"
 }
 
 # Outputs
