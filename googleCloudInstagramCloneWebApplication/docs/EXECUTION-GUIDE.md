@@ -88,7 +88,17 @@ kubectl cluster-info
 cd backend
 
 # Build all services
-mvn clean package -DskipTests
+Yes, you are correct; the `mvn clean package -DskipTests` command needs to be executed in each backend service directory to build all services.
+
+```bash
+SERVICES=("auth-service" "user-service" "post-service" "feed-service" "comment-service" "like-service")
+
+for service in "${SERVICES[@]}"; do
+  cd $service
+  mvn clean package -DskipTests
+  cd ..
+done
+```
 
 # Run tests (optional but recommended)
 mvn test

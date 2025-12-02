@@ -155,13 +155,11 @@ public class PostService {
                 .map(post -> mapToDto(post, user, null, null))
                 .toList();
 
-        return new PagedResponse<>(
+        return PagedResponse.of(
                 posts,
                 postsPage.getNumber(),
                 postsPage.getSize(),
-                postsPage.getTotalElements(),
-                postsPage.getTotalPages(),
-                postsPage.isLast()
+                postsPage.getTotalElements()
         );
     }
 
@@ -180,13 +178,11 @@ public class PostService {
                 .map(post -> mapToDto(post, usersMap.get(post.getUserId()), null, null))
                 .toList();
 
-        return new PagedResponse<>(
+        return PagedResponse.of(
                 posts,
                 postsPage.getNumber(),
                 postsPage.getSize(),
-                postsPage.getTotalElements(),
-                postsPage.getTotalPages(),
-                postsPage.isLast()
+                postsPage.getTotalElements()
         );
     }
 
@@ -204,13 +200,11 @@ public class PostService {
                 .map(post -> mapToDto(post, usersMap.get(post.getUserId()), null, null))
                 .toList();
 
-        return new PagedResponse<>(
+        return PagedResponse.of(
                 posts,
                 postsPage.getNumber(),
                 postsPage.getSize(),
-                postsPage.getTotalElements(),
-                postsPage.getTotalPages(),
-                postsPage.isLast()
+                postsPage.getTotalElements()
         );
     }
 
@@ -288,8 +282,8 @@ public class PostService {
                 .toList();
 
         return PostDto.builder()
-                .id(post.getId())
-                .userId(post.getUserId())
+                .id(post.getId().toString())
+                .userId(post.getUserId().toString())
                 .user(user)
                 .caption(post.getCaption())
                 .imageUrls(imageUrls)

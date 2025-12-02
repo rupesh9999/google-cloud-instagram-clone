@@ -13,7 +13,7 @@ const Home: React.FC = () => {
 
   // Fetch feed with infinite scroll
   const {
-    data: feedData,
+    data: _feedData,
     fetchNextPage,
     hasNextPage,
     isLoading: isFeedLoading,

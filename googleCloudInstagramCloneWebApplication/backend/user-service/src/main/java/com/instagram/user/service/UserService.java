@@ -148,13 +148,11 @@ public class UserService {
                 .map(user -> mapToDto(user, followingIds.contains(user.getId())))
                 .toList();
 
-        return new PagedResponse<>(
+        return PagedResponse.of(
                 users,
                 usersPage.getNumber(),
                 usersPage.getSize(),
-                usersPage.getTotalElements(),
-                usersPage.getTotalPages(),
-                usersPage.isLast()
+                usersPage.getTotalElements()
         );
     }
 
@@ -211,13 +209,11 @@ public class UserService {
                 .map(user -> mapToDto(user, followingIds.contains(user.getId())))
                 .toList();
 
-        return new PagedResponse<>(
+        return PagedResponse.of(
                 users,
                 followerIdsPage.getNumber(),
                 followerIdsPage.getSize(),
-                followerIdsPage.getTotalElements(),
-                followerIdsPage.getTotalPages(),
-                followerIdsPage.isLast()
+                followerIdsPage.getTotalElements()
         );
     }
 
@@ -240,13 +236,11 @@ public class UserService {
                 .map(user -> mapToDto(user, currentUserFollowingIds.contains(user.getId())))
                 .toList();
 
-        return new PagedResponse<>(
+        return PagedResponse.of(
                 users,
                 followingIdsPage.getNumber(),
                 followingIdsPage.getSize(),
-                followingIdsPage.getTotalElements(),
-                followingIdsPage.getTotalPages(),
-                followingIdsPage.isLast()
+                followingIdsPage.getTotalElements()
         );
     }
 
@@ -290,19 +284,17 @@ public class UserService {
                 .limit(size)
                 .toList();
 
-        return new PagedResponse<>(
+        return PagedResponse.of(
                 suggestions,
                 page,
                 size,
-                suggestions.size(),
-                1,
-                true
+                (long) suggestions.size()
         );
     }
 
     private UserDto mapToDto(User user, Boolean isFollowing) {
         return UserDto.builder()
-                .id(user.getId())
+                .id(user.getId().toString())
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .fullName(user.getFullName())

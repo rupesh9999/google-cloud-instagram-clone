@@ -155,13 +155,13 @@ public class FeedService {
             return response.getBody();
         } catch (Exception e) {
             log.error("Failed to fetch feed posts: {}", e.getMessage());
-            return new PagedResponse<>(Collections.emptyList(), page, size, 0, 0, true);
+            return PagedResponse.of(Collections.emptyList(), page, size, 0L);
         }
     }
 
     private void enrichPostsWithLikeStatus(List<PostDto> posts, UUID userId) {
         try {
-            List<UUID> postIds = posts.stream()
+            List<String> postIds = posts.stream()
                     .map(PostDto::getId)
                     .toList();
 
@@ -176,7 +176,7 @@ public class FeedService {
             Map<String, Boolean> likeStatusMap = response.getBody();
             if (likeStatusMap != null) {
                 for (PostDto post : posts) {
-                    post.setIsLiked(likeStatusMap.getOrDefault(post.getId().toString(), false));
+                    post.setIsLiked(likeStatusMap.getOrDefault(post.getId(), false));
                 }
             }
         } catch (Exception e) {

@@ -1,0 +1,37 @@
+{
+  "app_service_account": {
+    "sensitive": false,
+    "type": "string",
+    "value": "instagram-clone-prod-app@instagram-clone-project1.iam.gserviceaccount.com"
+  },
+  "cloud_sql_connection_name": {
+    "sensitive": false,
+    "type": "string",
+    "value": "instagram-clone-project1:us-central1:instagram-clone-prod-postgres"
+  },
+  "cloud_sql_private_ip": {
+    "sensitive": true,
+    "type": "string",
+    "value": "10.133.1.2"
+  },
+  "gke_cluster_endpoint": {
+    "sensitive": true,
+    "type": "string",
+    "value": "35.226.3.44"
+  },
+  "gke_cluster_name": {
+    "sensitive": false,
+    "type": "string",
+    "value": "instagram-clone-prod-gke"
+  },
+  "media_bucket_name": {
+    "sensitive": false,
+    "type": "string",
+    "value": "instagram-clone-prod-media"
+  },
+  "redis_host": {
+    "sensitive": true,
+    "type": "string",
+    "value": "10.133.0.4"
+  }
+}

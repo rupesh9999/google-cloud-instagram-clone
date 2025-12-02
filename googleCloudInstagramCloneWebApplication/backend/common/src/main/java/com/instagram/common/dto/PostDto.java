@@ -17,11 +17,15 @@ public class PostDto {
     private String userId;
     private String username;
     private String userProfilePicture;
+    private UserDto user;
     private String imageUrl;
+    private List<String> imageUrls;
     private String caption;
+    private String location;
     private List<String> hashtags;
     private Long likesCount;
     private Long commentsCount;
     private Boolean isLiked;
+    private Boolean isSaved;
     private LocalDateTime createdAt;
 }

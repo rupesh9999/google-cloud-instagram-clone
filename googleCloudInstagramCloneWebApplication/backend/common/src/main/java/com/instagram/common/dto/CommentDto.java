@@ -18,5 +18,9 @@ public class CommentDto {
     private String username;
     private String userProfilePicture;
     private String content;
+    private String parentId;
+    private Long likesCount;
+    private Long repliesCount;
+    private UserDto user;
     private LocalDateTime createdAt;
 }

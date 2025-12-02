@@ -145,13 +145,11 @@ public class CommentService {
                 .map(comment -> mapToDto(comment, usersMap.get(comment.getUserId())))
                 .toList();
 
-        return new PagedResponse<>(
+        return PagedResponse.of(
                 comments,
                 commentsPage.getNumber(),
                 commentsPage.getSize(),
-                commentsPage.getTotalElements(),
-                commentsPage.getTotalPages(),
-                commentsPage.isLast()
+                commentsPage.getTotalElements()
         );
     }
 
@@ -170,13 +168,11 @@ public class CommentService {
                 .map(reply -> mapToDto(reply, usersMap.get(reply.getUserId())))
                 .toList();
 
-        return new PagedResponse<>(
+        return PagedResponse.of(
                 replies,
                 repliesPage.getNumber(),
                 repliesPage.getSize(),
-                repliesPage.getTotalElements(),
-                repliesPage.getTotalPages(),
-                repliesPage.isLast()
+                repliesPage.getTotalElements()
         );
     }
 
@@ -237,11 +233,11 @@ public class CommentService {
 
     private CommentDto mapToDto(Comment comment, UserDto user) {
         return CommentDto.builder()
-                .id(comment.getId())
-                .postId(comment.getPostId())
-                .userId(comment.getUserId())
+                .id(comment.getId().toString())
+                .postId(comment.getPostId().toString())
+                .userId(comment.getUserId().toString())
                 .user(user)
-                .parentId(comment.getParentId())
+                .parentId(comment.getParentId() != null ? comment.getParentId().toString() : null)
                 .content(comment.getContent())
                 .likesCount(comment.getLikesCount())
                 .repliesCount(comment.getRepliesCount())
