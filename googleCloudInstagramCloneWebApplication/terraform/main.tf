@@ -171,6 +171,12 @@ module "iam" {
 
   # GCS bucket for media
   media_bucket_name = module.gcs.bucket_name
+
+  # Workload Identity configuration - depends on GKE cluster
+  enable_workload_identity = true
+  workload_identity_pool   = module.gke.workload_identity_pool
+
+  depends_on = [module.gke]
 }
 
 # Secret Manager
