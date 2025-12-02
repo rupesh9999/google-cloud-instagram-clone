@@ -30,7 +30,7 @@ spec:
         fsGroup: 1001
       containers:
         - name: comment-service
-          image: gcr.io/${GCP_PROJECT_ID}/comment-service:latest
+          image: gcr.io/instagram-clone-project/comment-service:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8080

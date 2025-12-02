@@ -4,27 +4,14 @@ metadata:
   name: app-config
   namespace: instagram-clone
 data:
-  # Database configuration
-  DB_HOST: "instagram-clone-postgres-private-ip"
+  DB_HOST: "10.133.1.2"
   DB_PORT: "5432"
-  
-  # Redis configuration
-  REDIS_HOST: "instagram-clone-redis-host"
+  DB_NAME: "instagram"
+  REDIS_HOST: "10.133.0.4"
   REDIS_PORT: "6379"
-  
-  # Service URLs (internal Kubernetes DNS)
-  AUTH_SERVICE_URL: "http://auth-service:8080"
-  USER_SERVICE_URL: "http://user-service:8080"
-  POST_SERVICE_URL: "http://post-service:8080"
-  FEED_SERVICE_URL: "http://feed-service:8080"
-  COMMENT_SERVICE_URL: "http://comment-service:8080"
-  LIKE_SERVICE_URL: "http://like-service:8080"
-  
-  # GCS configuration
-  GCS_BUCKET_NAME: "instagram-clone-media"
-  
-  # JWT configuration
-  JWT_EXPIRATION: "86400000"
-  
-  # Logging
+  GCS_BUCKET_NAME: "instagram-clone-prod-media"
+  SPRING_PROFILES_ACTIVE: "default"
   LOG_LEVEL: "INFO"
+  CORS_ALLOWED_ORIGINS: "*"
+  JWT_EXPIRATION: "86400000"
+  SERVER_PORT: "8080"

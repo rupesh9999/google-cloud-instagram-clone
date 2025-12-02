@@ -30,7 +30,7 @@ spec:
         fsGroup: 1001
       containers:
         - name: auth-service
-          image: gcr.io/${GCP_PROJECT_ID}/auth-service:latest
+          image: gcr.io/instagram-clone-project/auth-service:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8080

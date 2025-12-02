@@ -19,29 +19,30 @@ resources:
   - hpa/hpa.yaml
   - network-policies/network-policies.yaml
 
-commonLabels:
-  app.kubernetes.io/part-of: instagram-clone
-  app.kubernetes.io/managed-by: kustomize
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: instagram-clone
+      app.kubernetes.io/managed-by: kustomize
 
 images:
-  - name: gcr.io/${GCP_PROJECT_ID}/auth-service
-    newName: gcr.io/instagram-clone-project/auth-service
+  - name: gcr.io/instagram-clone-project/auth-service
+    newName: gcr.io/instagram-clone-project1/auth-service
     newTag: latest
-  - name: gcr.io/${GCP_PROJECT_ID}/user-service
-    newName: gcr.io/instagram-clone-project/user-service
+  - name: gcr.io/instagram-clone-project/user-service
+    newName: gcr.io/instagram-clone-project1/user-service
     newTag: latest
-  - name: gcr.io/${GCP_PROJECT_ID}/post-service
-    newName: gcr.io/instagram-clone-project/post-service
+  - name: gcr.io/instagram-clone-project/post-service
+    newName: gcr.io/instagram-clone-project1/post-service
     newTag: latest
-  - name: gcr.io/${GCP_PROJECT_ID}/feed-service
-    newName: gcr.io/instagram-clone-project/feed-service
+  - name: gcr.io/instagram-clone-project/feed-service
+    newName: gcr.io/instagram-clone-project1/feed-service
     newTag: latest
-  - name: gcr.io/${GCP_PROJECT_ID}/comment-service
-    newName: gcr.io/instagram-clone-project/comment-service
+  - name: gcr.io/instagram-clone-project/comment-service
+    newName: gcr.io/instagram-clone-project1/comment-service
     newTag: latest
-  - name: gcr.io/${GCP_PROJECT_ID}/like-service
-    newName: gcr.io/instagram-clone-project/like-service
+  - name: gcr.io/instagram-clone-project/like-service
+    newName: gcr.io/instagram-clone-project1/like-service
     newTag: latest
-  - name: gcr.io/${GCP_PROJECT_ID}/frontend
-    newName: gcr.io/instagram-clone-project/frontend
+  - name: gcr.io/instagram-clone-project/frontend
+    newName: gcr.io/instagram-clone-project1/frontend
     newTag: latest

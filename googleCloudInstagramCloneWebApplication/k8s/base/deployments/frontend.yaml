@@ -30,7 +30,7 @@ spec:
         fsGroup: 1001
       containers:
         - name: frontend
-          image: gcr.io/${GCP_PROJECT_ID}/frontend:latest
+          image: gcr.io/instagram-clone-project/frontend:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8080

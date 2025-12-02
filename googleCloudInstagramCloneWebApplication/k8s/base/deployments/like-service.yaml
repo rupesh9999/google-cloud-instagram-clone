@@ -30,7 +30,7 @@ spec:
         fsGroup: 1001
       containers:
         - name: like-service
-          image: gcr.io/${GCP_PROJECT_ID}/like-service:latest
+          image: gcr.io/instagram-clone-project/like-service:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8080

@@ -189,6 +189,15 @@ kustomize edit set image \
   gcr.io/instagram-clone-project/comment-service=gcr.io/$PROJECT_ID/comment-service:latest \
   gcr.io/instagram-clone-project/like-service=gcr.io/$PROJECT_ID/like-service:latest \
   gcr.io/instagram-clone-project/frontend=gcr.io/$PROJECT_ID/frontend:latest
+
+kustomize edit set image \
+  gcr.io/instagram-clone-project1/auth-service=gcr.io/$PROJECT_ID/auth-service:latest \
+  gcr.io/instagram-clone-project1/user-service=gcr.io/$PROJECT_ID/user-service:latest \
+  gcr.io/instagram-clone-project1/post-service=gcr.io/$PROJECT_ID/post-service:latest \
+  gcr.io/instagram-clone-project1/feed-service=gcr.io/$PROJECT_ID/feed-service:latest \
+  gcr.io/instagram-clone-project1/comment-service=gcr.io/$PROJECT_ID/comment-service:latest \
+  gcr.io/instagram-clone-project1/like-service=gcr.io/$PROJECT_ID/like-service:latest \
+  gcr.io/instagram-clone-project1/frontend=gcr.io/$PROJECT_ID/frontend:latest
 ```
 
 ### 3.3 Update ConfigMaps

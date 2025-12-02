@@ -8,8 +8,9 @@ resources:
 
 namePrefix: dev-
 
-commonLabels:
-  environment: development
+labels:
+  - pairs:
+      environment: development
 
 # Development-specific patches
 patches:
@@ -50,33 +51,39 @@ patches:
       kind: Deployment
       labelSelector: "app.kubernetes.io/component=backend"
 
-configMapGenerator:
-  - name: dev-config
-    behavior: merge
-    literals:
-      - SPRING_PROFILES_ACTIVE=dev
-      - LOG_LEVEL=DEBUG
-      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+  # ConfigMap patch for dev environment
+  - patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: app-config
+      data:
+        SPRING_PROFILES_ACTIVE: "dev"
+        LOG_LEVEL: "DEBUG"
+        CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173"
+    target:
+      kind: ConfigMap
+      name: app-config
 
 images:
   - name: gcr.io/instagram-clone-project/auth-service
-    newName: gcr.io/instagram-clone-dev/auth-service
-    newTag: dev
+    newName: gcr.io/instagram-clone-project1/auth-service
+    newTag: latest
   - name: gcr.io/instagram-clone-project/user-service
-    newName: gcr.io/instagram-clone-dev/user-service
-    newTag: dev
+    newName: gcr.io/instagram-clone-project1/user-service
+    newTag: latest
   - name: gcr.io/instagram-clone-project/post-service
-    newName: gcr.io/instagram-clone-dev/post-service
-    newTag: dev
+    newName: gcr.io/instagram-clone-project1/post-service
+    newTag: latest
   - name: gcr.io/instagram-clone-project/feed-service
-    newName: gcr.io/instagram-clone-dev/feed-service
-    newTag: dev
+    newName: gcr.io/instagram-clone-project1/feed-service
+    newTag: latest
   - name: gcr.io/instagram-clone-project/comment-service
-    newName: gcr.io/instagram-clone-dev/comment-service
-    newTag: dev
+    newName: gcr.io/instagram-clone-project1/comment-service
+    newTag: latest
   - name: gcr.io/instagram-clone-project/like-service
-    newName: gcr.io/instagram-clone-dev/like-service
-    newTag: dev
+    newName: gcr.io/instagram-clone-project1/like-service
+    newTag: latest
   - name: gcr.io/instagram-clone-project/frontend
-    newName: gcr.io/instagram-clone-dev/frontend
-    newTag: dev
+    newName: gcr.io/instagram-clone-project1/frontend
+    newTag: latest

@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: instagram-clone
+  name: monitoring
   labels:
-    app.kubernetes.io/name: instagram-clone
+    app.kubernetes.io/name: monitoring
     app.kubernetes.io/managed-by: argocd
