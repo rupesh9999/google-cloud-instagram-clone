@@ -1,0 +1,94 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: auth-service-canary
+  namespace: instagram-clone
+spec:
+  replicas: 2
+  strategy:
+    canary:
+      steps:
+        - setWeight: 20
+        - pause: {duration: 2m}
+        - setWeight: 40
+        - pause: {duration: 2m}
+        - setWeight: 60
+        - pause: {duration: 2m}
+        - setWeight: 80
+        - pause: {duration: 2m}
+      canaryService: auth-service-canary
+      stableService: auth-service-stable
+      trafficRouting:
+        nginx:
+          stableIngress: instagram-ingress
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      serviceAccountName: instagram-app
+      containers:
+        - name: auth-service
+          image: gcr.io/instagram-clone-project1/auth-service:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: prod-app-config
+            - secretRef:
+                name: app-secrets
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service-stable
+  namespace: instagram-clone
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: auth-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service-canary
+  namespace: instagram-clone
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: auth-service
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: success-rate
+  namespace: instagram-clone
+spec:
+  args:
+    - name: service-name
+  metrics:
+    - name: success-rate
+      interval: 1m
+      successCondition: result[0] >= 0.95
+      failureLimit: 3
+      provider:
+        prometheus:
+          address: http://prometheus.monitoring.svc.cluster.local:9090
+          query: |
+            sum(rate(http_server_requests_seconds_count{status!~"5.*",service="{{args.service-name}}"}[5m])) 
+            / sum(rate(http_server_requests_seconds_count{service="{{args.service-name}}"}[5m]))
