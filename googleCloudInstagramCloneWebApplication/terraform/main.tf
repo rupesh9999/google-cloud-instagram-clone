@@ -90,6 +90,9 @@ module "gke" {
   # Kubernetes version
   kubernetes_version = var.kubernetes_version
 
+  # Deletion protection
+  deletion_protection = var.gke_deletion_protection
+
   depends_on = [module.vpc]
 }
 

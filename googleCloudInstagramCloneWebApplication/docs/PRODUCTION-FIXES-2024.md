@@ -169,3 +169,22 @@ curl -X POST http://34.54.24.2/api/v1/auth/login \
 | Redis | ✅ Connected |
 
 **Application URL**: http://34.54.24.2/
+
+## Additional Operational Notes
+
+### Reassigning DB object ownership
+If you need to remove the Cloud SQL user (e.g., during a `terraform destroy`), use the included helper script to reassign object ownership across multiple DBs to avoid blocking user deletion:
+
+```bash
+# Make it executable
+chmod +x scripts/reassign_owned_objects.sh
+
+# Example usage (Cloud Shell recommended):
+PROJECT_ID="$(gcloud config get-value project)"
+./scripts/reassign_owned_objects.sh $PROJECT_ID instagram-clone-prod-postgres instagram_app postgres like_db,comment_db
+```
+
+This uses `REASSIGN OWNED` to transfer ownership of database objects from `instagram_app` to `postgres`. Verify ownership change before attempting to delete the user.
+
+### GKE Deletion Protection
+GKE clusters can be configured with deletion protection. We updated the module to default `deletion_protection=false`, but if a cluster has deletion protection enabled, it must be manually disabled in the Cloud Console or via Terraform (see Execution Guide v3.0 for steps) prior to deletion.

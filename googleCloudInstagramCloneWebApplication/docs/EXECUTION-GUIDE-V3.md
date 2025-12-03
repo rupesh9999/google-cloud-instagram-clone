@@ -524,6 +524,82 @@ gcloud sql users set-password instagram_app \
 
 # Restart all services to pick up new secrets
 kubectl -n instagram-clone rollout restart deployment --all
+
+### 5.4 Deleting DB User When Role Owns Objects (Important for terraform destroy)
+
+When attempting to delete a Cloud SQL user (for example as part of a `terraform destroy`), the deletion may fail because the role still owns DB objects in one or more databases. The error looks like:
+
+```
+Error 400: Invalid request: failed to delete user instagram_app: . role "instagram_app" cannot be dropped because some objects depend on it
+
+Details: 3 objects in database like_db
+4 objects in database comment_db.
+```
+
+To safely remove the user, reassign the ownership of objects to another user (e.g., `postgres`) and then allow Terraform to destroy the role. The recommended steps are:
+
+1. Connect to the Cloud SQL instance (Cloud Shell is simplest):
+
+```bash
+PROJECT_ID="$(gcloud config get-value project)"
+INSTANCE_NAME="instagram-clone-prod-postgres"
+gcloud sql connect $INSTANCE_NAME --project=$PROJECT_ID --user=postgres
+```
+
+2. For each database that contains objects owned by `instagram_app`, run:
+
+```sql
+\c like_db
+REASSIGN OWNED BY instagram_app TO postgres;
+\c comment_db
+REASSIGN OWNED BY instagram_app TO postgres;
+```
+
+Important: `REASSIGN OWNED` transfers object ownership. If you intend to remove the objects instead, you can run `DROP OWNED BY instagram_app;` but this will delete those objects.
+
+3. Verify no objects remain owned by `instagram_app`:
+
+```sql
+SELECT nspname, relname, rolname
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+JOIN pg_roles r ON r.oid = c.relowner
+WHERE rolname = 'instagram_app';
+```
+
+4. Re-run `terraform destroy` or re-try the user deletion step. Terraform should now remove the `google_sql_user` resource successfully.
+
+Helper: If you want to automate reassigning ownership for multiple databases, you can use the included helper script:
+
+```bash
+chmod +x scripts/reassign_owned_objects.sh
+PROJECT_ID="$(gcloud config get-value project)"
+./scripts/reassign_owned_objects.sh $PROJECT_ID instagram-clone-prod-postgres instagram_app postgres like_db,comment_db
+```
+
+Be sure to run this in an environment that can connect to the Cloud SQL instance (Cloud Shell or a machine on the VPC).
+
+
+### 5.5 GKE Deletion Protection (Terraform `destroy` blocked)
+
+If `terraform destroy` fails with the error:
+
+```
+Error: Cannot destroy cluster because deletion_protection is set to true. Set it to false to proceed with cluster deletion.
+```
+
+Follow these options:
+
+Option A — Use Terraform (recommended):
+1) Edit the GKE module and ensure `deletion_protection = false` is defined for the cluster resource (e.g., `terraform/modules/gke/main.tf`).
+2) Run `terraform plan -var-file=environments/prod/terraform.tfvars` and `terraform apply -var-file=environments/prod/terraform.tfvars` to let Terraform clear the property on the cluster.
+3) Now run `terraform destroy -var-file=environments/prod/terraform.tfvars` again.
+
+Option B — Use the Google Cloud Console:
+1) Navigate to Cloud Console > Kubernetes Engine > Clusters, select your cluster, and toggle deletion protection OFF.
+2) Re-run `terraform destroy`.
+
+Note: After turning off deletion protection, rerun `terraform destroy`.
 ```
 
 ---

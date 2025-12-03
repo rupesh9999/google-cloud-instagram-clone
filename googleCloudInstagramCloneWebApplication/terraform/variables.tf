@@ -87,6 +87,12 @@ variable "gke_node_zones" {
   default     = []
 }
 
+variable "gke_deletion_protection" {
+  description = "Whether to enable deletion protection for the GKE cluster"
+  type        = bool
+  default     = false
+}
+
 # Cloud SQL Variables
 variable "postgres_version" {
   description = "PostgreSQL version"

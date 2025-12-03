@@ -62,7 +62,7 @@ resource "google_sql_database_instance" "postgres" {
   project             = var.project_id
   region              = var.region
   database_version    = var.database_version
-  deletion_protection = var.environment == "prod" ? true : false
+  deletion_protection = false
 
   settings {
     tier              = var.tier

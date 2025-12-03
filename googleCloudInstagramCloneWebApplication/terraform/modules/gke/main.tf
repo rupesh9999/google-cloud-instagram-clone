@@ -58,6 +58,12 @@ variable "kubernetes_version" {
   default = "1.32"
 }
 
+variable "deletion_protection" {
+  type    = bool
+  default = false
+  description = "If true, prevent deletion of the GKE cluster from the console/terraform. Default false."
+}
+
 # Zone configuration - nodes will be distributed across these zones
 variable "node_zones" {
   type        = list(string)
@@ -148,6 +154,9 @@ resource "google_container_cluster" "primary" {
   release_channel {
     channel = var.environment == "prod" ? "STABLE" : "REGULAR"
   }
+
+  # Ensure cluster deletion is allowed by default (can be toggled in environment-specific TF vars)
+  deletion_protection = var.deletion_protection
 
   # Addons
   addons_config {
